@@ -37,20 +37,16 @@ def help():
     print("""\
 REQUIRED ARGUMENTS
 
--d <google dork>	E.g: -d index.php?page=main.php
-	
+-d <google dork>    E.g: -d index.php?page=main.php
+    
 OPTIONAL ARGUMENTS
     
 -n <maximum number of Google search pages>  
--s <filename>		Save the URLs retreived by Google
-		        into a .txt file.		         
--i <initial google search page>
+-i <initial page to search>        
 
 Examples of usage:
 
-rfispider.py -d index.php?page=contact.php
-rfispider.py -d index.php?file=*.php -n 10
-rfispider.py -d .php?view=*.php -n 10 -i 1
+rfispider.py -d .php?view=*.php -n 10 -i 0
 
     """)
 
@@ -62,33 +58,35 @@ def gsearch(dork, npages, start_page):
     user_agent = {'User-agent': 'Mozilla/5.0'}
     ### Each search result page shows 10 websites
     print "Looking URLs in Google ... \n"
+    print "Number of pages to look --> "+ str(npages)
+    print "Initial page --> "+ str(start_page)
     for start in range(start_page, (start_page + npages)):
         url = "https://www.google.com/search?q=%s&start=%s" % (dork, str(start*10))
-	print "Looking into page: " + str(start)
-	r = requests.get(url, headers = user_agent)    
-	soup = BeautifulSoup(r.text, "html.parser")
-	
-	##CAPTCHA detection
-	if r.text.find("Our systems have detected unusual traffic") != -1:
-	    print "CAPTCHA detected !!!!\nBetter try from another IP..."
-	    return found_urls
-	    
-	### Parse and clean URLs of current page
-	raw_links = soup.find_all("a",href=re.compile("(?<=/url\?q=)(htt.*://.*)"))
-	for link in raw_links:
-	    if link["href"].find("webcache.googleusercontent.com") == -1:
-	        nlink = link["href"].replace("/url?q=","")
-		nlink = re.sub(r'&sa=.*', "", nlink)
-		nlink = urllib2.unquote(nlink).decode('utf8')
-		print nlink
-		found_urls.append(nlink)
-	### If less than 10 results there is no more pages
-	if len(raw_links) < 10:
-	    print "No more results were found\n"
-	    return found_urls
-	else:
-	    sleep(randint(10,100))#Avoid Google captcha
-    	
+    print "Looking into page: " + str(start)
+    r = requests.get(url, headers = user_agent)    
+    soup = BeautifulSoup(r.text, "html.parser")
+    
+    ##CAPTCHA detection
+    if r.text.find("Our systems have detected unusual traffic") != -1:
+        print "CAPTCHA detected !!!!\nBetter try from another IP..."
+        return found_urls
+        
+    ### Parse and clean URLs of current page
+    raw_links = soup.find_all("a",href=re.compile("(?<=/url\?q=)(htt.*://.*)"))
+    for link in raw_links:
+        if link["href"].find("webcache.googleusercontent.com") == -1:
+            nlink = link["href"].replace("/url?q=","")
+        nlink = re.sub(r'&sa=.*', "", nlink)
+        nlink = urllib2.unquote(nlink).decode('utf8')
+        print nlink
+        found_urls.append(nlink)
+    ### If less than 10 results there is no more pages
+    if len(raw_links) < 10:
+        print "No more results were found\n"
+        return found_urls
+    else:
+        sleep(randint(10,100))#Avoid Google captcha
+        
     return found_urls
 
 
@@ -105,24 +103,24 @@ def lookv(keydork, ulist):
     for url in ulist:
         try:
             #nurl = url.replace(kstring, new_kstring, 1)
-	    nurl = re.sub(mreg_exp, new_kstring, url)
-    	    print "Connecting: --> " + str(nurl)
+        nurl = re.sub(mreg_exp, new_kstring, url)
+            print "Connecting: --> " + str(nurl)
             response = urllib2.urlopen(nurl)
             print "HTTP Response: " + str(response.getcode())
             html = response.read()
             print "Checking if it is vulnerable..."
             if html.find(magic_s) != -1:  # -1 will be returned when the magic_s is not found
                 print "Vulnerable !!!!"
-        	vuln_urls.append(nurl)
+            vuln_urls.append(nurl)
             else:
-    	        print "No vulnerable :("
+                print "No vulnerable :("
             response.close()
         except (urllib2.HTTPError) as e:
-    	    print "HTTP Error: \n--------------"
+            print "HTTP Error: \n--------------"
             print e.getcode()
             pass
         except:
-    	    print "Unknown error: \n-----------"
+            print "Unknown error: \n-----------"
             pass
         
     return vuln_urls
@@ -137,10 +135,14 @@ def main(argv):
    
     #Checking arguments
     try:
-        opts, args = getopt.getopt(argv,"hd:n:")
+        opts, args = getopt.getopt(argv,"hd:n:i:")
     except getopt.GetoptError:
         print 'Usage: url_test.py -d <google dork>  [OPTIONS]'
         sys.exit(2)
+
+    npages = 10 #Default
+    start_page = 0 #Default
+
     for opt, arg in opts:
         if opt == '-h':
             help()
@@ -148,7 +150,9 @@ def main(argv):
         elif opt == "-d":
             dork = arg
         elif opt == "-n":
-            npages = arg
+            npages = int(arg)
+        elif opt == "-i":
+            start_page = int(arg)
     
     banner()
     ndork = 'inurl:"'+dork+'"'    
@@ -178,7 +182,7 @@ if __name__ == "__main__":
 # Return a list of the lines, breaking at line boundaries.
 #url_list = data.splitlines()
 #url_list = filter(None, url_list) #Remove empty rows
-##############################################################		
-		
-		
-		
+##############################################################      
+        
+        
+        
